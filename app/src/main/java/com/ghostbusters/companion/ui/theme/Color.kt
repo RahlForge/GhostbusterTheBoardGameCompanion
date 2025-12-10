@@ -17,6 +17,7 @@ val SlimerGreen = Color(0xFF32CD32)
 
 // UI colors
 val SlimeGreen = Color(0xFF7FFF00)
+val SlimePink = Color(0xFFFF1493) // Hot pink for GB2 slime
 val TrapYellow = Color(0xFFFFD700)
 val TrapBlack = Color(0xFF1A1A1A)
 

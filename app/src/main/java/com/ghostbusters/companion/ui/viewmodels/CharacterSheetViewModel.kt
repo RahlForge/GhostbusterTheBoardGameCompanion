@@ -4,8 +4,10 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ghostbusters.companion.data.database.entities.CharacterEntity
+import com.ghostbusters.companion.data.database.entities.GameInstanceEntity
 import com.ghostbusters.companion.data.database.entities.TrappedGhostData
 import com.ghostbusters.companion.data.repository.CharacterRepository
+import com.ghostbusters.companion.data.repository.GameInstanceRepository
 import com.ghostbusters.companion.domain.model.Ghost
 import com.ghostbusters.companion.domain.model.Level
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,6 +21,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CharacterSheetViewModel @Inject constructor(
     private val characterRepository: CharacterRepository,
+    private val gameInstanceRepository: GameInstanceRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -26,6 +29,9 @@ class CharacterSheetViewModel @Inject constructor(
 
     private val _character = MutableStateFlow<CharacterEntity?>(null)
     val character: StateFlow<CharacterEntity?> = _character.asStateFlow()
+
+    private val _gameInstance = MutableStateFlow<GameInstanceEntity?>(null)
+    val gameInstance: StateFlow<GameInstanceEntity?> = _gameInstance.asStateFlow()
 
     init {
         loadCharacter()
@@ -35,6 +41,17 @@ class CharacterSheetViewModel @Inject constructor(
         viewModelScope.launch {
             characterRepository.getCharacterById(characterId).collect { character ->
                 _character.value = character
+                character?.let {
+                    loadGameInstance(it.gameInstanceId)
+                }
+            }
+        }
+    }
+
+    private fun loadGameInstance(gameId: Long) {
+        viewModelScope.launch {
+            gameInstanceRepository.getGameInstanceById(gameId).collect { gameInstance ->
+                _gameInstance.value = gameInstance
             }
         }
     }
@@ -54,7 +71,7 @@ class CharacterSheetViewModel @Inject constructor(
     fun toggleProtonStream(index: Int) {
         val current = _character.value ?: return
         if (index < 0 || index >= 5) return
-        
+
         val usedStreams = current.protonStreamsUsed
         val bitMask = 1 shl index
         val newUsedStreams = if ((usedStreams and bitMask) != 0) {
@@ -62,7 +79,7 @@ class CharacterSheetViewModel @Inject constructor(
         } else {
             usedStreams or bitMask // Turn on
         }
-        
+
         updateCharacter(current.copy(protonStreamsUsed = newUsedStreams))
     }
 
@@ -77,7 +94,7 @@ class CharacterSheetViewModel @Inject constructor(
         val current = _character.value ?: return
         val maxActions = if (getCurrentLevel() >= Level.LEVEL_3) 3 else 2
         if (index < 0 || index >= maxActions) return
-        
+
         val usedActions = current.actionsUsed
         val bitMask = 1 shl index
         val newUsedActions = if ((usedActions and bitMask) != 0) {
@@ -85,7 +102,7 @@ class CharacterSheetViewModel @Inject constructor(
         } else {
             usedActions or bitMask // Turn on (Slime -> Action)
         }
-        
+
         updateCharacter(current.copy(actionsUsed = newUsedActions))
     }
 
@@ -105,10 +122,10 @@ class CharacterSheetViewModel @Inject constructor(
             rating = rating,
             name = "Ghost (Rating $rating)"
         )
-        
+
         val updatedGhosts = current.trappedGhosts + ghost
         val newXp = (current.xp + rating).coerceIn(0, 30)
-        
+
         updateCharacter(current.copy(
             trappedGhosts = updatedGhosts,
             xp = newXp
@@ -122,7 +139,7 @@ class CharacterSheetViewModel @Inject constructor(
             rating = ghost.rating,
             name = ghost.name
         )
-        
+
         val updatedGhosts = current.trappedGhosts + ghostData
         updateCharacter(current.copy(trappedGhosts = updatedGhosts))
     }

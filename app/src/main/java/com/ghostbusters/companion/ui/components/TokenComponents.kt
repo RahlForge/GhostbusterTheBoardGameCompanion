@@ -13,6 +13,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.ghostbusters.companion.domain.model.GameType
+import com.ghostbusters.companion.ui.theme.SlimeGreen
+import com.ghostbusters.companion.ui.theme.SlimePink
 
 @Composable
 fun ProtonStreamTokens(
@@ -26,9 +29,9 @@ fun ProtonStreamTokens(
             text = "Proton Streams",
             style = MaterialTheme.typography.titleMedium
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -51,17 +54,24 @@ fun ProtonStreamTokens(
 fun ActionSlimeTokens(
     actionCount: Int,
     usedActions: List<Boolean>,
+    gameType: GameType,
     onToggle: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Choose slime color based on game type
+    val slimeColor = when (gameType) {
+        GameType.GHOSTBUSTERS -> SlimeGreen // Green for GB1
+        GameType.GHOSTBUSTERS_II -> SlimePink // Pink for GB2
+    }
+
     Column(modifier = modifier) {
         Text(
             text = "Actions / Slime",
             style = MaterialTheme.typography.titleMedium
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -73,10 +83,21 @@ fun ActionSlimeTokens(
                         .clickable { onToggle(index) },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (usedActions[index]) "💧" else "⚡",
-                        style = MaterialTheme.typography.headlineLarge
-                    )
+                    if (usedActions[index]) {
+                        // Slime state - colored circle
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Slime ${index + 1}",
+                            tint = slimeColor,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    } else {
+                        // Action state - lightning bolt emoji
+                        Text(
+                            text = "⚡",
+                            style = MaterialTheme.typography.headlineLarge
+                        )
+                    }
                 }
             }
         }

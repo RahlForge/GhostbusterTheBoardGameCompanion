@@ -13,7 +13,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.ghostbusters.companion.domain.model.CharacterAbility
-import com.ghostbusters.companion.domain.model.Level
 import com.ghostbusters.companion.ui.components.GhostTrapSection
 import com.ghostbusters.companion.ui.components.ProtonStreamTokens
 import com.ghostbusters.companion.ui.components.ActionSlimeTokens
@@ -27,11 +26,12 @@ fun CharacterSheetScreen(
     viewModel: CharacterSheetViewModel = hiltViewModel()
 ) {
     val character by viewModel.character.collectAsState()
-    
+    val gameInstance by viewModel.gameInstance.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(character?.characterName?.getDisplayName() ?: "Character")
                 },
                 navigationIcon = {
@@ -79,7 +79,7 @@ fun CharacterSheetScreen(
                                 )
                             }
                         }
-                        
+
                         Column {
                             Text(
                                 text = char.characterName.getDisplayName(),
@@ -94,13 +94,13 @@ fun CharacterSheetScreen(
                         }
                     }
                 }
-                
+
                 // XP Tracker
                 XpTracker(
                     currentXp = char.xp,
                     onXpChange = { viewModel.setXp(it) }
                 )
-                
+
                 // Abilities
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(
@@ -112,18 +112,18 @@ fun CharacterSheetScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        
+
                         val abilities = CharacterAbility.getDefaultAbilities(char.characterName)
                         val currentLevel = viewModel.getCurrentLevel()
-                        
+
                         abilities.forEach { ability ->
                             val isUnlocked = currentLevel >= ability.level
-                            
+
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isUnlocked) 
-                                        MaterialTheme.colorScheme.primaryContainer 
-                                    else 
+                                    containerColor = if (isUnlocked)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
                                         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                                 )
                             ) {
@@ -131,9 +131,9 @@ fun CharacterSheetScreen(
                                     Text(
                                         text = "Level ${ability.level.ordinal + 1}",
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = if (isUnlocked) 
-                                            MaterialTheme.colorScheme.onPrimaryContainer 
-                                        else 
+                                        color = if (isUnlocked)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
                                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                     )
                                     if (isUnlocked) {
@@ -153,7 +153,7 @@ fun CharacterSheetScreen(
                         }
                     }
                 }
-                
+
                 // Proton Streams
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -164,28 +164,29 @@ fun CharacterSheetScreen(
                         )
                     }
                 }
-                
+
                 // Actions / Slime
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         ActionSlimeTokens(
                             actionCount = viewModel.getMaxActions(),
                             usedActions = (0 until viewModel.getMaxActions()).map { viewModel.isActionUsed(it) },
+                            gameType = gameInstance?.gameType ?: com.ghostbusters.companion.domain.model.GameType.GHOSTBUSTERS,
                             onToggle = { viewModel.toggleAction(it) }
                         )
                     }
                 }
-                
+
                 // Ghost Trap
                 GhostTrapSection(
                     trappedGhosts = char.trappedGhosts,
                     onTrapGhost = { rating -> viewModel.trapGhost(rating) },
                     onRemoveGhost = { ghostId -> viewModel.removeGhost(ghostId) }
                 )
-                
+
                 // Ghost Trap Token (GB2 only)
                 // This would need game type info - we'll add it later when we pass that data
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
             }
         } ?: run {

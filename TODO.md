@@ -1,5 +1,15 @@
 ﻿# TODO List - Future Enhancements
 
+## Recently Completed ✅
+
+### Game-Specific Slime Colors (December 10, 2025)
+- [x] Add pink slime color for Ghostbusters II
+- [x] Update CharacterSheetViewModel to load game instance
+- [x] Update ActionSlimeTokens to accept game type parameter
+- [x] Dynamically color slime based on game type (green for GB1, pink for GB2)
+- [x] Update CharacterSheetScreen to pass game type to component
+- [x] Documentation created (SLIME_COLOR_QUICK_REFERENCE.md, SLIME_COLOR_UPDATE.md)
+
 ## Priority: HIGH (Core Functionality)
 
 ### Character Abilities
@@ -218,4 +228,3 @@ This is a living document. Check off items as you complete them and add new item
 ---
 
 Last Updated: December 9, 2025
-
