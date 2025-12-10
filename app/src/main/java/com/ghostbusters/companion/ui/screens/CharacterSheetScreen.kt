@@ -95,6 +95,42 @@ fun CharacterSheetScreen(
                     }
                 }
 
+                // Character Stats
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        val stats = viewModel.getCharacterStats()
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Move/Drive",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${stats.move}/${stats.drive}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Line of Sight",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${stats.lineOfSight}",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 // XP Tracker
                 XpTracker(
                     currentXp = char.xp,
@@ -113,35 +149,93 @@ fun CharacterSheetScreen(
                             fontWeight = FontWeight.Bold
                         )
 
-                        val abilities = CharacterAbility.getDefaultAbilities(char.characterName)
+                        val abilities = CharacterAbility.getAbilitiesForCharacter(
+                            char.characterName,
+                            gameInstance?.gameType ?: com.ghostbusters.companion.domain.model.GameType.GHOSTBUSTERS
+                        )
                         val currentLevel = viewModel.getCurrentLevel()
+                        val hasActionsAvailable = viewModel.hasActionsAvailable()
 
                         abilities.forEach { ability ->
                             val isUnlocked = currentLevel >= ability.level
+                            val isTappable = isUnlocked &&
+                                ability.abilityType == com.ghostbusters.companion.domain.model.AbilityType.TAPPABLE &&
+                                (!ability.requiresAction || hasActionsAvailable)
 
                             Card(
+                                modifier = if (isTappable) {
+                                    Modifier.clickable {
+                                        viewModel.useAbility(ability)
+                                    }
+                                } else {
+                                    Modifier
+                                },
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isUnlocked)
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                    containerColor = when {
+                                        !isUnlocked -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                                        isTappable -> MaterialTheme.colorScheme.secondaryContainer
+                                        else -> MaterialTheme.colorScheme.primaryContainer
+                                    }
                                 )
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(
-                                        text = "Level ${ability.level.ordinal + 1}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = if (isUnlocked)
-                                            MaterialTheme.colorScheme.onPrimaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "Level ${ability.level.ordinal + 1}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (isUnlocked)
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            else
+                                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                        )
+
+                                        // Show ability type badge
+                                        if (isUnlocked && ability.abilityType != com.ghostbusters.companion.domain.model.AbilityType.PASSIVE) {
+                                            Surface(
+                                                color = when (ability.abilityType) {
+                                                    com.ghostbusters.companion.domain.model.AbilityType.TAPPABLE -> MaterialTheme.colorScheme.secondary
+                                                    com.ghostbusters.companion.domain.model.AbilityType.TEAM_PASSIVE -> MaterialTheme.colorScheme.tertiary
+                                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                                },
+                                                shape = MaterialTheme.shapes.small
+                                            ) {
+                                                Text(
+                                                    text = when (ability.abilityType) {
+                                                        com.ghostbusters.companion.domain.model.AbilityType.TAPPABLE -> "TAP"
+                                                        com.ghostbusters.companion.domain.model.AbilityType.TEAM_PASSIVE -> "TEAM"
+                                                        com.ghostbusters.companion.domain.model.AbilityType.TRIGGERED_BY_DICE -> "DICE"
+                                                        else -> ""
+                                                    },
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                                    color = MaterialTheme.colorScheme.onSecondary
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     if (isUnlocked) {
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = ability.description,
                                             style = MaterialTheme.typography.bodyMedium
                                         )
+
+                                        if (isTappable) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "👆 Tap to use",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                            )
+                                        }
                                     } else {
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = "🔒 Locked",
                                             style = MaterialTheme.typography.bodyMedium,
@@ -181,7 +275,11 @@ fun CharacterSheetScreen(
                 GhostTrapSection(
                     trappedGhosts = char.trappedGhosts,
                     onTrapGhost = { rating -> viewModel.trapGhost(rating) },
-                    onRemoveGhost = { ghostId -> viewModel.removeGhost(ghostId) }
+                    onRemoveGhost = { ghostId -> viewModel.removeGhost(ghostId) },
+                    onDepositGhosts = if (char.characterName == com.ghostbusters.companion.domain.model.CharacterName.WINSTON_ZEDDEMORE &&
+                        viewModel.getCurrentLevel() >= com.ghostbusters.companion.domain.model.Level.LEVEL_1) {
+                        { ghostIds -> viewModel.depositGhosts(ghostIds) }
+                    } else null
                 )
 
                 // Ghost Trap Token (GB2 only)

@@ -2,6 +2,19 @@
 
 ## Recently Completed ✅
 
+### Character Abilities - Base Ghostbusters Game (December 10, 2025)
+- [x] Add character stats display (Move/Drive, Line of Sight)
+- [x] Create ability type system (Passive, Tappable, Dice-Triggered, Team)
+- [x] Peter Venkman abilities (all 5 levels) with tappable L1 & L2
+- [x] Egon Spengler abilities (all 5 levels) with dice mechanics
+- [x] Ray Stantz abilities (all 5 levels) with tappable L1 & L2
+- [x] Winston Zeddemore abilities (all 5 levels) with deposit system
+- [x] Tappable ability system with visual feedback
+- [x] Ghost deposit feature for Winston with XP calculation
+- [x] Ability type badges (TAP, DICE, TEAM)
+- [x] Dynamic stat modifications (Venkman LoS +1, Winston Move +1)
+- [x] Documentation (CHARACTER_ABILITIES_COMPLETE.md)
+
 ### Game-Specific Slime Colors (December 10, 2025)
 - [x] Add pink slime color for Ghostbusters II
 - [x] Update CharacterSheetViewModel to load game instance
@@ -12,15 +25,13 @@
 
 ## Priority: HIGH (Core Functionality)
 
-### Character Abilities
-- [ ] Define specific abilities for each character
-  - [ ] Peter Venkman abilities (Levels 1, 2, 4, 5)
-  - [ ] Egon Spengler abilities (Levels 1, 2, 4, 5)
-  - [ ] Winston Zeddemore abilities (Levels 1, 2, 4, 5)
-  - [ ] Ray Stantz abilities (Levels 1, 2, 4, 5)
-  - [ ] Louis Tully abilities (Levels 1, 2, 4, 5)
-  - [ ] Slimer abilities (Levels 1, 2, 4, 5)
-- [ ] Update `CharacterAbility.getDefaultAbilities()` with real ability text
+### Character Abilities - Remaining
+- [ ] Louis Tully abilities (Levels 1, 2, 4, 5) - GB2 expansion
+- [ ] Slimer abilities (Levels 1, 2, 4, 5) - GB2 expansion
+- [ ] Ghostbusters II abilities for base 4 characters
+- [ ] Dice rolling system integration
+- [ ] Turn tracking for once-per-turn abilities
+- [ ] Team-wide stat application (cross-character bonuses)
 
 ### Character Portraits
 - [ ] Create or source character portrait images

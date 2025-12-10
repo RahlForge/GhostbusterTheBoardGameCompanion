@@ -17,15 +17,20 @@ import com.ghostbusters.companion.data.database.entities.TrappedGhostData
 import com.ghostbusters.companion.ui.theme.TrapBlack
 import com.ghostbusters.companion.ui.theme.TrapYellow
 
+@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun GhostTrapSection(
     trappedGhosts: List<TrappedGhostData>,
     onTrapGhost: (Int) -> Unit,
     onRemoveGhost: (String) -> Unit,
+    onDepositGhosts: ((List<String>) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
-    
+    var showDepositDialog by remember { mutableStateOf(false) }
+    var selectedGhostIds by remember { mutableStateOf(setOf<String>()) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -43,12 +48,26 @@ fun GhostTrapSection(
                 color = TrapYellow
             )
             
-            IconButton(onClick = { showAddDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Trap Ghost",
-                    tint = TrapYellow
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onDepositGhosts != null && trappedGhosts.isNotEmpty()) {
+                    Button(
+                        onClick = { showDepositDialog = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TrapYellow,
+                            contentColor = TrapBlack
+                        )
+                    ) {
+                        Text("Deposit")
+                    }
+                }
+
+                IconButton(onClick = { showAddDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Trap Ghost",
+                        tint = TrapYellow
+                    )
+                }
             }
         }
         
@@ -82,6 +101,23 @@ fun GhostTrapSection(
             onConfirm = { rating ->
                 onTrapGhost(rating)
                 showAddDialog = false
+            }
+        )
+    }
+
+    if (showDepositDialog && onDepositGhosts != null) {
+        DepositGhostsDialog(
+            trappedGhosts = trappedGhosts,
+            selectedGhostIds = selectedGhostIds,
+            onSelectionChange = { selectedGhostIds = it },
+            onDismiss = {
+                showDepositDialog = false
+                selectedGhostIds = setOf()
+            },
+            onConfirm = {
+                onDepositGhosts(selectedGhostIds.toList())
+                showDepositDialog = false
+                selectedGhostIds = setOf()
             }
         )
     }
@@ -161,6 +197,116 @@ private fun AddGhostDialog(
         confirmButton = {
             Button(onClick = { onConfirm(selectedRating) }) {
                 Text("Trap")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DepositGhostsDialog(
+    trappedGhosts: List<TrappedGhostData>,
+    selectedGhostIds: Set<String>,
+    onSelectionChange: (Set<String>) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    val totalRating = trappedGhosts
+        .filter { it.ghostId in selectedGhostIds }
+        .sumOf { it.rating }
+    val xpGain = totalRating / 3
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Deposit Ghosts") },
+        text = {
+            Column {
+                Text("Select ghosts to deposit:")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(trappedGhosts) { ghost ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (ghost.ghostId in selectedGhostIds)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = ghost.ghostId in selectedGhostIds,
+                                    onCheckedChange = { checked ->
+                                        onSelectionChange(
+                                            if (checked) {
+                                                selectedGhostIds + ghost.ghostId
+                                            } else {
+                                                selectedGhostIds - ghost.ghostId
+                                            }
+                                        )
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = ghost.name,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = "Rating: ${ghost.rating}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (selectedGhostIds.isNotEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Total Rating: $totalRating",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = "XP Gain: $xpGain (Total ÷ 3)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = selectedGhostIds.isNotEmpty()
+            ) {
+                Text("Deposit (${selectedGhostIds.size})")
             }
         },
         dismissButton = {
