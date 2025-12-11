@@ -1,4 +1,4 @@
-﻿package com.ghostbusters.companion.domain.model
+package com.ghostbusters.companion.domain.model
 
 enum class GameType {
     GHOSTBUSTERS,

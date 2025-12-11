@@ -1,4 +1,4 @@
-﻿package com.ghostbusters.companion.domain.model
+package com.ghostbusters.companion.domain.model
 
 data class Ghost(
     val id: String,
@@ -46,7 +46,7 @@ data class CharacterAbility(
                         Level.LEVEL_1,
                         "When a Ghost Slimes you on your turn, gain 1 XP.",
                         AbilityType.TAPPABLE,
-                        requiresAction = true,
+                        requiresAction = true,  // Requires action and will switch it to slime
                         xpGain = 1
                     ),
                     CharacterAbility(

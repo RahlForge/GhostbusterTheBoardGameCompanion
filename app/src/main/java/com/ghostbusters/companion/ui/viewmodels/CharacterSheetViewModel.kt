@@ -1,4 +1,4 @@
-package com.ghostbusters.companion.ui.viewmodels
+﻿package com.ghostbusters.companion.ui.viewmodels
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -8,6 +8,10 @@ import com.ghostbusters.companion.data.database.entities.GameInstanceEntity
 import com.ghostbusters.companion.data.database.entities.TrappedGhostData
 import com.ghostbusters.companion.data.repository.CharacterRepository
 import com.ghostbusters.companion.data.repository.GameInstanceRepository
+import com.ghostbusters.companion.domain.model.AbilityType
+import com.ghostbusters.companion.domain.model.CharacterAbility
+import com.ghostbusters.companion.domain.model.CharacterName
+import com.ghostbusters.companion.domain.model.CharacterStats
 import com.ghostbusters.companion.domain.model.Ghost
 import com.ghostbusters.companion.domain.model.Level
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,6 +56,12 @@ class CharacterSheetViewModel @Inject constructor(
         viewModelScope.launch {
             gameInstanceRepository.getGameInstanceById(gameId).collect { gameInstance ->
                 _gameInstance.value = gameInstance
+            }
+        }
+        // Load all characters in this game for team passive abilities
+        viewModelScope.launch {
+            characterRepository.getCharactersByGameInstance(gameId).collect { characters ->
+                _allCharacters.value = characters
             }
         }
     }
@@ -165,7 +175,6 @@ class CharacterSheetViewModel @Inject constructor(
     }
 
     fun hasActionsAvailable(): Boolean {
-        val current = _character.value ?: return false
         val maxActions = getMaxActions()
         for (i in 0 until maxActions) {
             if (!isActionUsed(i)) {
@@ -175,34 +184,48 @@ class CharacterSheetViewModel @Inject constructor(
         return false
     }
 
-    fun getCharacterStats(): com.ghostbusters.companion.domain.model.CharacterStats {
-        val current = _character.value ?: return com.ghostbusters.companion.domain.model.CharacterAbility.getBaseStats(
-            com.ghostbusters.companion.domain.model.CharacterName.PETER_VENKMAN
+    private val _allCharacters = MutableStateFlow<List<CharacterEntity>>(emptyList())
+    val allCharacters: StateFlow<List<CharacterEntity>> = _allCharacters.asStateFlow()
+
+    fun getCharacterStats(): CharacterStats {
+        val current = _character.value ?: return CharacterAbility.getBaseStats(
+            CharacterName.PETER_VENKMAN
         )
 
-        val baseStats = com.ghostbusters.companion.domain.model.CharacterAbility.getBaseStats(current.characterName)
-        val currentLevel = getCurrentLevel()
-        val gameInstance = _gameInstance.value
+        val baseStats = CharacterAbility.getBaseStats(current.characterName)
+        val allChars = _allCharacters.value
 
         // Apply level-based stat modifications
-        var move = baseStats.move
-        var drive = baseStats.drive
-        var los = baseStats.lineOfSight
+        val move: Int
+        val drive: Int
+        val los: Int
 
+        // Check ALL characters in the game for team passive abilities
         // Venkman Level 5: +1 LoS for all Ghostbusters
-        if (current.characterName == com.ghostbusters.companion.domain.model.CharacterName.PETER_VENKMAN &&
-            currentLevel >= com.ghostbusters.companion.domain.model.Level.LEVEL_5) {
-            los += 1
+        val hasVenkmanLevel5 = allChars.any {
+            it.characterName == CharacterName.PETER_VENKMAN &&
+            Level.fromXp(it.xp) >= Level.LEVEL_5
+        }
+        los = if (hasVenkmanLevel5) {
+            baseStats.lineOfSight + 1
+        } else {
+            baseStats.lineOfSight
         }
 
         // Winston Level 5: +1 Move for all Ghostbusters
-        if (current.characterName == com.ghostbusters.companion.domain.model.CharacterName.WINSTON_ZEDDEMORE &&
-            currentLevel >= com.ghostbusters.companion.domain.model.Level.LEVEL_5) {
-            move += 1
-            drive += 1
+        val hasWinstonLevel5 = allChars.any {
+            it.characterName == CharacterName.WINSTON_ZEDDEMORE &&
+            Level.fromXp(it.xp) >= Level.LEVEL_5
+        }
+        if (hasWinstonLevel5) {
+            move = baseStats.move + 1
+            drive = baseStats.drive + 1
+        } else {
+            move = baseStats.move
+            drive = baseStats.drive
         }
 
-        return com.ghostbusters.companion.domain.model.CharacterStats(
+        return CharacterStats(
             characterName = current.characterName,
             move = move,
             drive = drive,
@@ -210,17 +233,17 @@ class CharacterSheetViewModel @Inject constructor(
         )
     }
 
-    fun useAbility(ability: com.ghostbusters.companion.domain.model.CharacterAbility) {
+    fun useAbility(ability: CharacterAbility) {
         val current = _character.value ?: return
 
         when (ability.abilityType) {
-            com.ghostbusters.companion.domain.model.AbilityType.TAPPABLE -> {
+            AbilityType.TAPPABLE -> {
                 // Handle tappable abilities
                 when (current.characterName) {
-                    com.ghostbusters.companion.domain.model.CharacterName.PETER_VENKMAN -> {
+                    CharacterName.PETER_VENKMAN -> {
                         when (ability.level) {
-                            com.ghostbusters.companion.domain.model.Level.LEVEL_1,
-                            com.ghostbusters.companion.domain.model.Level.LEVEL_2 -> {
+                            Level.LEVEL_1,
+                            Level.LEVEL_2 -> {
                                 // Find first available action and toggle it to slime
                                 val maxActions = getMaxActions()
                                 for (i in 0 until maxActions) {
@@ -230,7 +253,7 @@ class CharacterSheetViewModel @Inject constructor(
                                     }
                                 }
                                 // Add XP for Level 1 ability
-                                if (ability.level == com.ghostbusters.companion.domain.model.Level.LEVEL_1) {
+                                if (ability.level == Level.LEVEL_1) {
                                     addXp(1)
                                 }
                             }
@@ -238,13 +261,13 @@ class CharacterSheetViewModel @Inject constructor(
                         }
                     }
 
-                    com.ghostbusters.companion.domain.model.CharacterName.RAY_STANTZ -> {
+                    CharacterName.RAY_STANTZ -> {
                         when (ability.level) {
-                            com.ghostbusters.companion.domain.model.Level.LEVEL_1 -> {
+                            Level.LEVEL_1 -> {
                                 // Ray Level 1: Gain 1 XP when removing slime from another
                                 addXp(1)
                             }
-                            com.ghostbusters.companion.domain.model.Level.LEVEL_2 -> {
+                            Level.LEVEL_2 -> {
                                 // Ray Level 2: Remove a slime from yourself
                                 // Find first used action (slime) and toggle it back to action
                                 val maxActions = getMaxActions()
@@ -279,8 +302,8 @@ class CharacterSheetViewModel @Inject constructor(
         val remainingGhosts = current.trappedGhosts.filter { it.ghostId !in ghostIds }
 
         // For Winston: gain XP based on total rating / 3
-        if (current.characterName == com.ghostbusters.companion.domain.model.CharacterName.WINSTON_ZEDDEMORE &&
-            getCurrentLevel() >= com.ghostbusters.companion.domain.model.Level.LEVEL_1) {
+        if (current.characterName == CharacterName.WINSTON_ZEDDEMORE &&
+            getCurrentLevel() >= Level.LEVEL_1) {
             val xpGained = totalRating / 3
             if (xpGained > 0) {
                 val newXp = (current.xp + xpGained).coerceIn(0, 30)
