@@ -125,6 +125,35 @@ class CharacterSheetViewModel @Inject constructor(
         return (current.actionsUsed and bitMask) != 0
     }
 
+    fun addSlime() {
+        val current = _character.value ?: return
+        val maxActions = getMaxActions()
+        android.util.Log.d("CharacterSheetVM", "addSlime() called - current slimeCount: ${current.slimeCount}, maxActions: $maxActions")
+        if (current.slimeCount < maxActions) {
+            val newCount = current.slimeCount + 1
+            android.util.Log.d("CharacterSheetVM", "Adding slime - new count will be: $newCount")
+            updateCharacter(current.copy(slimeCount = newCount))
+        } else {
+            android.util.Log.d("CharacterSheetVM", "Cannot add slime - already at max")
+        }
+    }
+
+    fun removeSlime() {
+        val current = _character.value ?: return
+        if (current.slimeCount > 0) {
+            updateCharacter(current.copy(slimeCount = current.slimeCount - 1))
+        }
+    }
+
+    fun getSlimeCount(): Int {
+        return _character.value?.slimeCount ?: 0
+    }
+
+    fun canAddSlime(): Boolean {
+        val current = _character.value ?: return false
+        return current.slimeCount < getMaxActions()
+    }
+
     fun trapGhost(rating: Int) {
         val current = _character.value ?: return
         val ghostId = UUID.randomUUID().toString()
@@ -318,6 +347,7 @@ class CharacterSheetViewModel @Inject constructor(
 
     fun useAbility(ability: CharacterAbility) {
         val current = _character.value ?: return
+        android.util.Log.d("CharacterSheetVM", "useAbility called - Character: ${current.characterName}, Level: ${ability.level}, Type: ${ability.abilityType}")
 
         when (ability.abilityType) {
             AbilityType.TAPPABLE -> {
@@ -327,16 +357,12 @@ class CharacterSheetViewModel @Inject constructor(
                         when (ability.level) {
                             Level.LEVEL_1,
                             Level.LEVEL_2 -> {
-                                // Find first available action and toggle it to slime
-                                val maxActions = getMaxActions()
-                                for (i in 0 until maxActions) {
-                                    if (!isActionUsed(i)) {
-                                        toggleAction(i)
-                                        break
-                                    }
-                                }
+                                android.util.Log.d("CharacterSheetVM", "Venkman Level ${ability.level.ordinal + 1} ability activated")
+                                // Add slime
+                                addSlime()
                                 // Add XP for Level 1 ability
                                 if (ability.level == Level.LEVEL_1) {
+                                    android.util.Log.d("CharacterSheetVM", "Adding 1 XP for Level 1 ability")
                                     addXp(1)
                                 }
                             }

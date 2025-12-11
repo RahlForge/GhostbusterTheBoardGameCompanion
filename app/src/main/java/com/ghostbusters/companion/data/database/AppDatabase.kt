@@ -1,4 +1,4 @@
-﻿package com.ghostbusters.companion.data.database
+package com.ghostbusters.companion.data.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -13,7 +13,7 @@ import com.ghostbusters.companion.data.database.entities.GameInstanceEntity
         GameInstanceEntity::class,
         CharacterEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

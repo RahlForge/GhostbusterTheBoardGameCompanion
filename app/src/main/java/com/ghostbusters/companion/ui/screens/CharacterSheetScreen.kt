@@ -160,9 +160,19 @@ fun CharacterSheetScreen(
 
                         abilities.forEach { ability ->
                             val isUnlocked = currentLevel >= ability.level
+                            val maxActions = viewModel.getMaxActions()
+                            val canAddMoreSlime = char.slimeCount < maxActions
+
                             val isTappable = isUnlocked &&
                                 ability.abilityType == com.ghostbusters.companion.domain.model.AbilityType.TAPPABLE &&
-                                (!ability.requiresAction || hasActionsAvailable)
+                                when {
+                                    // Venkman's abilities require ability to add slime
+                                    char.characterName == com.ghostbusters.companion.domain.model.CharacterName.PETER_VENKMAN &&
+                                    (ability.level == com.ghostbusters.companion.domain.model.Level.LEVEL_1 ||
+                                     ability.level == com.ghostbusters.companion.domain.model.Level.LEVEL_2) -> canAddMoreSlime
+                                    // Other abilities use the old requirement
+                                    else -> !ability.requiresAction || hasActionsAvailable
+                                }
 
                             Card(
                                 modifier = if (isTappable) {
@@ -376,9 +386,12 @@ fun CharacterSheetScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         ActionSlimeTokens(
                             actionCount = viewModel.getMaxActions(),
-                            usedActions = (0 until viewModel.getMaxActions()).map { viewModel.isActionUsed(it) },
-                            gameType = gameInstance?.gameType ?: com.ghostbusters.companion.domain.model.GameType.GHOSTBUSTERS,
-                            onToggle = { viewModel.toggleAction(it) }
+                            slimeCount = char.slimeCount,
+                            actionStates = (0 until viewModel.getMaxActions()).map { viewModel.isActionUsed(it) },
+                            characterColor = Color(char.characterName.getProtonStreamColor().hex),
+                            onActionToggle = { viewModel.toggleAction(it) },
+                            onAddSlime = { viewModel.addSlime() },
+                            onRemoveSlime = { viewModel.removeSlime() }
                         )
                     }
                 }
