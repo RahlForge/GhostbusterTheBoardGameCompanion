@@ -18,6 +18,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
@@ -134,12 +135,94 @@ class CharacterSheetViewModel @Inject constructor(
         )
 
         val updatedGhosts = current.trappedGhosts + ghost
-        val newXp = (current.xp + rating).coerceIn(0, 30)
 
         updateCharacter(current.copy(
-            trappedGhosts = updatedGhosts,
-            xp = newXp
+            trappedGhosts = updatedGhosts
         ))
+    }
+
+    fun getCharactersWithActiveStreams(): List<Pair<CharacterEntity, Int>> {
+        val allChars = _allCharacters.value
+        val current = _character.value
+
+        return allChars
+            .filter { it.id != current?.id } // Exclude current character
+            .mapNotNull { char ->
+                val activeStreams = (0..4).count { index ->
+                    val bitMask = 1 shl index
+                    (char.protonStreamsUsed and bitMask) != 0
+                }
+                if (activeStreams > 0) {
+                    Pair(char, activeStreams)
+                } else {
+                    null
+                }
+            }
+    }
+
+    fun handleTrapIt(trapped: Boolean, assistingCharacterIds: List<Long>) {
+        val current = _character.value ?: return
+
+        // Count active proton streams for current character
+        val myActiveStreams = (0..4).count { isProtonStreamUsed(it) }
+
+        if (myActiveStreams > 0) {
+            viewModelScope.launch {
+                var totalStreams = myActiveStreams
+
+                // Get all assisting characters from the cached list
+                val allChars = _allCharacters.value
+                val assistingCharacters = allChars.filter { it.id in assistingCharacterIds }
+
+                // Process assisting characters
+                for (assistChar in assistingCharacters) {
+                    // Count their active streams
+                    val assistStreams = (0..4).count { index ->
+                        val bitMask = 1 shl index
+                        (assistChar.protonStreamsUsed and bitMask) != 0
+                    }
+
+                    if (assistStreams > 0) {
+                        totalStreams += assistStreams
+
+                        // Grant XP to assisting character
+                        val assistXp = (assistChar.xp + assistStreams).coerceIn(0, 30)
+                        characterRepository.updateCharacter(
+                            assistChar.copy(
+                                xp = assistXp,
+                                protonStreamsUsed = 0 // Deactivate their streams
+                            )
+                        )
+                    }
+                }
+
+                // Grant XP to current character based on their streams
+                val myNewXp = (current.xp + myActiveStreams).coerceIn(0, 30)
+
+                // If ghost was trapped, add it with rating = total streams
+                if (trapped) {
+                    val ghostId = UUID.randomUUID().toString()
+                    val ghost = TrappedGhostData(
+                        ghostId = ghostId,
+                        rating = totalStreams,
+                        name = "Ghost (Rating $totalStreams)"
+                    )
+                    val updatedGhosts = current.trappedGhosts + ghost
+
+                    updateCharacter(current.copy(
+                        xp = myNewXp,
+                        trappedGhosts = updatedGhosts,
+                        protonStreamsUsed = 0 // Deactivate current character's streams
+                    ))
+                } else {
+                    // Just grant XP and deactivate streams
+                    updateCharacter(current.copy(
+                        xp = myNewXp,
+                        protonStreamsUsed = 0 // Deactivate current character's streams
+                    ))
+                }
+            }
+        }
     }
 
     fun transferGhost(ghost: Ghost) {
@@ -318,10 +401,45 @@ class CharacterSheetViewModel @Inject constructor(
         updateCharacter(current.copy(trappedGhosts = remainingGhosts))
     }
 
+    fun transferGhosts(ghostIds: List<String>) {
+        val current = _character.value ?: return
+        val ghostsToTransfer = current.trappedGhosts.filter { it.ghostId in ghostIds }
+
+        // Remove ghosts from current character
+        val remainingGhosts = current.trappedGhosts.filter { it.ghostId !in ghostIds }
+        updateCharacter(current.copy(trappedGhosts = remainingGhosts))
+
+        // Note: The actual transfer to another character will be handled by the screen
+        // which will call receiveTransferredGhosts on the target character
+    }
+
+    fun transferGhostsToCharacter(ghostIds: List<String>, targetCharacterId: Long) {
+        viewModelScope.launch {
+            val current = _character.value ?: return@launch
+            val ghostsToTransfer = current.trappedGhosts.filter { it.ghostId in ghostIds }
+
+            // Remove ghosts from current character
+            val remainingGhosts = current.trappedGhosts.filter { it.ghostId !in ghostIds }
+            characterRepository.updateCharacter(current.copy(trappedGhosts = remainingGhosts))
+
+            // Add ghosts to target character - use first() to get single value instead of collecting flow
+            val targetChar = characterRepository.getCharacterById(targetCharacterId).first()
+            if (targetChar != null) {
+                val updatedGhosts = targetChar.trappedGhosts + ghostsToTransfer
+                characterRepository.updateCharacter(targetChar.copy(trappedGhosts = updatedGhosts))
+            }
+        }
+    }
+
+    fun receiveTransferredGhosts(ghosts: List<TrappedGhostData>) {
+        val current = _character.value ?: return
+        val updatedGhosts = current.trappedGhosts + ghosts
+        updateCharacter(current.copy(trappedGhosts = updatedGhosts))
+    }
+
     private fun updateCharacter(character: CharacterEntity) {
         viewModelScope.launch {
             characterRepository.updateCharacter(character)
         }
     }
 }
-

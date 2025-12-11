@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -72,7 +73,7 @@ fun CharacterSheetScreen(
                         ) {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = androidx.compose.ui.Alignment.Center
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
                                     text = "👻",
@@ -105,7 +106,7 @@ fun CharacterSheetScreen(
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         val stats = viewModel.getCharacterStats()
-                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "Move/Drive",
                                 style = MaterialTheme.typography.labelMedium,
@@ -117,7 +118,7 @@ fun CharacterSheetScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
-                        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "Line of Sight",
                                 style = MaterialTheme.typography.labelMedium,
@@ -183,7 +184,7 @@ fun CharacterSheetScreen(
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
                                             text = "Level ${ability.level.ordinal + 1}",
@@ -250,14 +251,124 @@ fun CharacterSheetScreen(
                 }
 
                 // Proton Streams
+                var showTrapItDialog by remember { mutableStateOf(false) }
+
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         ProtonStreamTokens(
                             color = Color(char.characterName.getProtonStreamColor().hex),
                             usedStreams = (0..4).map { viewModel.isProtonStreamUsed(it) },
-                            onToggle = { viewModel.toggleProtonStream(it) }
+                            onToggle = { viewModel.toggleProtonStream(it) },
+                            onTrapIt = { showTrapItDialog = true }
                         )
                     }
+                }
+
+                if (showTrapItDialog) {
+                    val charactersWithStreams = viewModel.getCharactersWithActiveStreams()
+                    var selectedAssistants by remember { mutableStateOf(setOf<Long>()) }
+
+                    AlertDialog(
+                        onDismissRequest = {
+                            showTrapItDialog = false
+                            selectedAssistants = setOf()
+                        },
+                        title = { Text("Trap It!") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                if (charactersWithStreams.isNotEmpty()) {
+                                    Text(
+                                        text = "Select assisting Ghostbusters:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        charactersWithStreams.forEach { (character, streamCount) ->
+                                            Card(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        selectedAssistants = if (character.id in selectedAssistants) {
+                                                            selectedAssistants - character.id
+                                                        } else {
+                                                            selectedAssistants + character.id
+                                                        }
+                                                    },
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = if (character.id in selectedAssistants) {
+                                                        Color(character.characterName.getProtonStreamColor().hex).copy(alpha = 0.3f)
+                                                    } else {
+                                                        MaterialTheme.colorScheme.surfaceVariant
+                                                    }
+                                                )
+                                            ) {
+                                                Row(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(12.dp),
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Checkbox(
+                                                            checked = character.id in selectedAssistants,
+                                                            onCheckedChange = null
+                                                        )
+                                                        Text(
+                                                            text = character.characterName.getDisplayName(),
+                                                            style = MaterialTheme.typography.bodyLarge
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = "$streamCount stream${if (streamCount > 1) "s" else ""}",
+                                                        style = MaterialTheme.typography.bodyMedium,
+                                                        color = Color(character.characterName.getProtonStreamColor().hex)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+
+                                Text(
+                                    text = "Did you successfully trap the ghost?",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                viewModel.handleTrapIt(true, selectedAssistants.toList())
+                                showTrapItDialog = false
+                                selectedAssistants = setOf()
+                            }) {
+                                Text("Yes - Trapped!")
+                            }
+                        },
+                        dismissButton = {
+                            Column {
+                                TextButton(onClick = {
+                                    viewModel.handleTrapIt(false, selectedAssistants.toList())
+                                    showTrapItDialog = false
+                                    selectedAssistants = setOf()
+                                }) {
+                                    Text("No - Escaped")
+                                }
+                                TextButton(onClick = {
+                                    showTrapItDialog = false
+                                    selectedAssistants = setOf()
+                                }) {
+                                    Text("Cancel")
+                                }
+                            }
+                        }
+                    )
                 }
 
                 // Actions / Slime
@@ -273,6 +384,9 @@ fun CharacterSheetScreen(
                 }
 
                 // Ghost Trap
+                var showCharacterSelectDialog by remember { mutableStateOf(false) }
+                var selectedGhostIdsForTransfer by remember { mutableStateOf<List<String>>(emptyList()) }
+
                 GhostTrapSection(
                     trappedGhosts = char.trappedGhosts,
                     onTrapGhost = { rating -> viewModel.trapGhost(rating) },
@@ -280,8 +394,76 @@ fun CharacterSheetScreen(
                     onDepositGhosts = if (char.characterName == com.ghostbusters.companion.domain.model.CharacterName.WINSTON_ZEDDEMORE &&
                         viewModel.getCurrentLevel() >= com.ghostbusters.companion.domain.model.Level.LEVEL_1) {
                         { ghostIds -> viewModel.depositGhosts(ghostIds) }
-                    } else null
+                    } else null,
+                    onTransferGhosts = { ghostIds ->
+                        selectedGhostIdsForTransfer = ghostIds
+                        showCharacterSelectDialog = true
+                    }
                 )
+
+                // Character selection dialog for transfers
+                if (showCharacterSelectDialog) {
+                    val allCharacters by viewModel.allCharacters.collectAsState()
+                    val otherCharacters = allCharacters.filter { it.id != char.id }
+
+                    AlertDialog(
+                        onDismissRequest = {
+                            showCharacterSelectDialog = false
+                            selectedGhostIdsForTransfer = emptyList()
+                        },
+                        title = { Text("Transfer to...") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Select which Ghostbuster to transfer the ghosts to:")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                otherCharacters.forEach { targetChar ->
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                // Transfer ghosts to target character
+                                                viewModel.transferGhostsToCharacter(
+                                                    selectedGhostIdsForTransfer,
+                                                    targetChar.id
+                                                )
+                                                showCharacterSelectDialog = false
+                                                selectedGhostIdsForTransfer = emptyList()
+                                            },
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(targetChar.characterName.getProtonStreamColor().hex).copy(alpha = 0.2f)
+                                        )
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(16.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                text = targetChar.characterName.getDisplayName(),
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                            Text(
+                                                text = "${targetChar.trappedGhosts.size} 👻",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                            TextButton(onClick = {
+                                showCharacterSelectDialog = false
+                                selectedGhostIdsForTransfer = emptyList()
+                            }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
 
                 // Ghost Trap Token (GB2 only)
                 // This would need game type info - we'll add it later when we pass that data
@@ -293,7 +475,7 @@ fun CharacterSheetScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
-                contentAlignment = androidx.compose.ui.Alignment.Center
+                contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }

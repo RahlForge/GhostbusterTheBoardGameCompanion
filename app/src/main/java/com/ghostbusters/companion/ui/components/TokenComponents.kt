@@ -1,4 +1,4 @@
-﻿package com.ghostbusters.companion.ui.components
+package com.ghostbusters.companion.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -22,13 +22,33 @@ fun ProtonStreamTokens(
     color: Color,
     usedStreams: List<Boolean>,
     onToggle: (Int) -> Unit,
+    onTrapIt: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val activeStreamCount = usedStreams.count { it }
+
     Column(modifier = modifier) {
-        Text(
-            text = "Proton Streams",
-            style = MaterialTheme.typography.titleMedium
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Proton Streams",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            androidx.compose.material3.Button(
+                onClick = onTrapIt,
+                enabled = activeStreamCount > 0,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = color,
+                    disabledContainerColor = color.copy(alpha = 0.3f)
+                )
+            ) {
+                Text("Trap It!")
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -46,6 +66,15 @@ fun ProtonStreamTokens(
                         .clickable { onToggle(index) }
                 )
             }
+        }
+
+        if (activeStreamCount > 0) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "$activeStreamCount stream${if (activeStreamCount > 1) "s" else ""} active",
+                style = MaterialTheme.typography.bodySmall,
+                color = color
+            )
         }
     }
 }

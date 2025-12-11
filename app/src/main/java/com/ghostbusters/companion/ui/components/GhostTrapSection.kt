@@ -25,10 +25,12 @@ fun GhostTrapSection(
     onTrapGhost: (Int) -> Unit,
     onRemoveGhost: (String) -> Unit,
     onDepositGhosts: ((List<String>) -> Unit)? = null,
+    onTransferGhosts: ((List<String>) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showAddDialog by remember { mutableStateOf(false) }
     var showDepositDialog by remember { mutableStateOf(false) }
+    var showTransferDialog by remember { mutableStateOf(false) }
     var selectedGhostIds by remember { mutableStateOf(setOf<String>()) }
 
     Column(
@@ -49,15 +51,29 @@ fun GhostTrapSection(
             )
             
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (onDepositGhosts != null && trappedGhosts.isNotEmpty()) {
-                    Button(
-                        onClick = { showDepositDialog = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = TrapYellow,
-                            contentColor = TrapBlack
-                        )
-                    ) {
-                        Text("Deposit")
+                if (trappedGhosts.isNotEmpty()) {
+                    if (onTransferGhosts != null) {
+                        Button(
+                            onClick = { showTransferDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = TrapYellow,
+                                contentColor = TrapBlack
+                            )
+                        ) {
+                            Text("Transfer")
+                        }
+                    }
+
+                    if (onDepositGhosts != null) {
+                        Button(
+                            onClick = { showDepositDialog = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = TrapYellow,
+                                contentColor = TrapBlack
+                            )
+                        ) {
+                            Text("Deposit")
+                        }
                     }
                 }
 
@@ -117,6 +133,23 @@ fun GhostTrapSection(
             onConfirm = {
                 onDepositGhosts(selectedGhostIds.toList())
                 showDepositDialog = false
+                selectedGhostIds = setOf()
+            }
+        )
+    }
+
+    if (showTransferDialog && onTransferGhosts != null) {
+        TransferGhostsDialog(
+            trappedGhosts = trappedGhosts,
+            selectedGhostIds = selectedGhostIds,
+            onSelectionChange = { selectedGhostIds = it },
+            onDismiss = {
+                showTransferDialog = false
+                selectedGhostIds = setOf()
+            },
+            onConfirm = {
+                onTransferGhosts(selectedGhostIds.toList())
+                showTransferDialog = false
                 selectedGhostIds = setOf()
             }
         )
@@ -317,3 +350,94 @@ private fun DepositGhostsDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TransferGhostsDialog(
+    trappedGhosts: List<TrappedGhostData>,
+    selectedGhostIds: Set<String>,
+    onSelectionChange: (Set<String>) -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Transfer Ghosts") },
+        text = {
+            Column {
+                Text("Select ghosts to transfer to another Ghostbuster:")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(trappedGhosts) { ghost ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (ghost.ghostId in selectedGhostIds)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = ghost.ghostId in selectedGhostIds,
+                                    onCheckedChange = { checked ->
+                                        onSelectionChange(
+                                            if (checked) {
+                                                selectedGhostIds + ghost.ghostId
+                                            } else {
+                                                selectedGhostIds - ghost.ghostId
+                                            }
+                                        )
+                                    }
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = ghost.name,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Text(
+                                        text = "Rating: ${ghost.rating}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (selectedGhostIds.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${selectedGhostIds.size} ghost${if (selectedGhostIds.size > 1) "s" else ""} selected",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = selectedGhostIds.isNotEmpty()
+            ) {
+                Text("Transfer (${selectedGhostIds.size})")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
