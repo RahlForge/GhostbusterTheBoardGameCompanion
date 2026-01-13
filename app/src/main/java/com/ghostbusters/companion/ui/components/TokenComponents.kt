@@ -13,9 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.ghostbusters.companion.domain.model.GameType
 import com.ghostbusters.companion.ui.theme.SlimeGreen
-import com.ghostbusters.companion.ui.theme.SlimePink
 
 @Composable
 fun ProtonStreamTokens(
@@ -88,7 +86,9 @@ fun ActionSlimeTokens(
     onActionToggle: (Int) -> Unit,
     onAddSlime: () -> Unit,
     onRemoveSlime: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    maneuverUsed: Boolean = false,
+    onManeuverToggle: () -> Unit = {}
 ) {
     Column(modifier = modifier) {
         Text(
@@ -158,6 +158,42 @@ fun ActionSlimeTokens(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // Maneuver section
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Maneuver",
+                style = MaterialTheme.typography.titleSmall
+            )
+
+            // Maneuver button
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable { onManeuverToggle() },
+                contentAlignment = Alignment.Center
+            ) {
+                if (maneuverUsed) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Maneuver Used",
+                        tint = characterColor,
+                        modifier = Modifier.size(48.dp)
+                    )
+                } else {
+                    Text(
+                        text = "➡️",
+                        style = MaterialTheme.typography.headlineLarge
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         // Slime controls
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -168,7 +204,7 @@ fun ActionSlimeTokens(
                 enabled = slimeCount < actionCount,
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                     containerColor = SlimeGreen,
-                    contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
                     disabledContainerColor = SlimeGreen.copy(alpha = 0.3f)
                 ),
                 modifier = Modifier.weight(1f)
@@ -180,8 +216,8 @@ fun ActionSlimeTokens(
                 onClick = onRemoveSlime,
                 enabled = slimeCount > 0,
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary,
-                    disabledContainerColor = androidx.compose.material3.MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    disabledContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
                 ),
                 modifier = Modifier.weight(1f)
             ) {

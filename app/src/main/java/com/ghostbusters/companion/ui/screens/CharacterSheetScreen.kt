@@ -389,7 +389,9 @@ fun CharacterSheetScreen(
                             slimeCount = char.slimeCount,
                             actionStates = (0 until viewModel.getMaxActions()).map { viewModel.isActionUsed(it) },
                             characterColor = Color(char.characterName.getProtonStreamColor().hex),
+                            maneuverUsed = char.maneuverUsed,
                             onActionToggle = { viewModel.toggleAction(it) },
+                            onManeuverToggle = { viewModel.toggleManeuver() },
                             onAddSlime = { viewModel.addSlime() },
                             onRemoveSlime = { viewModel.removeSlime() }
                         )

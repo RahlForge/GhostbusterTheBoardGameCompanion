@@ -69,8 +69,12 @@ class CharacterSheetViewModel @Inject constructor(
 
     fun addXp(amount: Int) {
         val current = _character.value ?: return
-        val newXp = (current.xp + amount).coerceIn(0, 30)
-        updateCharacter(current.copy(xp = newXp))
+        updateCharacter(addXpToCharacter(current, amount))
+    }
+
+    private fun addXpToCharacter(character: CharacterEntity, amount: Int): CharacterEntity {
+        val newXp = (character.xp + amount).coerceIn(0, 30)
+        return character.copy(xp = newXp)
     }
 
     fun setXp(xp: Int) {
@@ -125,16 +129,30 @@ class CharacterSheetViewModel @Inject constructor(
         return (current.actionsUsed and bitMask) != 0
     }
 
+    fun toggleManeuver() {
+        val current = _character.value ?: return
+        updateCharacter(current.copy(maneuverUsed = !current.maneuverUsed))
+    }
+
+    fun isManeuverUsed(): Boolean {
+        return _character.value?.maneuverUsed ?: false
+    }
+
     fun addSlime() {
         val current = _character.value ?: return
+        updateCharacter(addSlimeToCharacter(current))
+    }
+
+    private fun addSlimeToCharacter(character: CharacterEntity): CharacterEntity {
         val maxActions = getMaxActions()
-        android.util.Log.d("CharacterSheetVM", "addSlime() called - current slimeCount: ${current.slimeCount}, maxActions: $maxActions")
-        if (current.slimeCount < maxActions) {
-            val newCount = current.slimeCount + 1
+        android.util.Log.d("CharacterSheetVM", "addSlime() called - current slimeCount: ${character.slimeCount}, maxActions: $maxActions")
+        return if (character.slimeCount < maxActions) {
+            val newCount = character.slimeCount + 1
             android.util.Log.d("CharacterSheetVM", "Adding slime - new count will be: $newCount")
-            updateCharacter(current.copy(slimeCount = newCount))
+            character.copy(slimeCount = newCount)
         } else {
             android.util.Log.d("CharacterSheetVM", "Cannot add slime - already at max")
+            character
         }
     }
 
@@ -346,7 +364,7 @@ class CharacterSheetViewModel @Inject constructor(
     }
 
     fun useAbility(ability: CharacterAbility) {
-        val current = _character.value ?: return
+        var current = _character.value ?: return
         android.util.Log.d("CharacterSheetVM", "useAbility called - Character: ${current.characterName}, Level: ${ability.level}, Type: ${ability.abilityType}")
 
         when (ability.abilityType) {
@@ -358,13 +376,18 @@ class CharacterSheetViewModel @Inject constructor(
                             Level.LEVEL_1,
                             Level.LEVEL_2 -> {
                                 android.util.Log.d("CharacterSheetVM", "Venkman Level ${ability.level.ordinal + 1} ability activated")
-                                // Add slime
-                                addSlime()
+
+                                // Compose state updates using helper functions
+                                current = addSlimeToCharacter(current)
+
                                 // Add XP for Level 1 ability
                                 if (ability.level == Level.LEVEL_1) {
                                     android.util.Log.d("CharacterSheetVM", "Adding 1 XP for Level 1 ability")
-                                    addXp(1)
+                                    current = addXpToCharacter(current, 1)
                                 }
+
+                                // Apply all updates at once
+                                updateCharacter(current)
                             }
                             else -> {}
                         }

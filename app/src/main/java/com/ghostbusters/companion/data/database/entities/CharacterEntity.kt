@@ -27,6 +27,7 @@ data class CharacterEntity(
     val protonStreamsUsed: Int = 0,
     val actionsUsed: Int = 0,
     val slimeCount: Int = 0,
+    val maneuverUsed: Boolean = false,
     val ghostTrapDeployed: Boolean = false,
     val trappedGhosts: List<TrappedGhostData> = emptyList()
 )
