@@ -156,10 +156,71 @@ class CharacterSheetViewModel @Inject constructor(
         }
     }
 
-    fun removeSlime() {
+    fun canDeSlime(): Boolean {
+        val current = _character.value ?: return false
+        val maxActions = getMaxActions()
+
+        // Check if at least 1 action is available (not used and not slimed)
+        val usedActionCount = (0 until maxActions).count { isActionUsed(it) }
+        val availableActions = maxActions - current.slimeCount - usedActionCount
+
+        return availableActions > 0
+    }
+
+    fun getDeSlimeTargets(): List<CharacterEntity> {
+        val current = _character.value ?: return emptyList()
+        val allChars = _allCharacters.value
+        val maxActions = getMaxActions()
+
+        return allChars.filter { char ->
+            if (char.slimeCount > 0) {
+                if (char.id == current.id) {
+                    // Can only de-slime self if ALL actions are available
+                    val usedActionCount = (0 until maxActions).count { isActionUsed(it) }
+                    val availableActions = maxActions - current.slimeCount - usedActionCount
+                    availableActions == maxActions - current.slimeCount
+                } else {
+                    // Can de-slime others if at least 1 action is available
+                    true
+                }
+            } else {
+                false
+            }
+        }
+    }
+
+    fun deSlimeCharacter(targetCharacterId: Long) {
         val current = _character.value ?: return
-        if (current.slimeCount > 0) {
-            updateCharacter(current.copy(slimeCount = current.slimeCount - 1))
+        val target = _allCharacters.value.find { it.id == targetCharacterId } ?: return
+
+        viewModelScope.launch {
+            // Reduce target's slime count by 1
+            val updatedTarget = target.copy(slimeCount = (target.slimeCount - 1).coerceAtLeast(0))
+            characterRepository.updateCharacter(updatedTarget)
+
+            // Mark actions as used on current character
+            if (target.id == current.id) {
+                // De-sliming self: mark ALL actions as used
+                val maxActions = getMaxActions()
+                var newActionsUsed = current.actionsUsed
+                for (i in 0 until maxActions) {
+                    val bitMask = 1 shl i
+                    newActionsUsed = newActionsUsed or bitMask
+                }
+                updateCharacter(current.copy(actionsUsed = newActionsUsed))
+            } else {
+                // De-sliming others: mark 1 action as used
+                val maxActions = getMaxActions()
+                // Find first available action and mark it as used
+                for (i in 0 until maxActions) {
+                    if (!isActionUsed(i)) {
+                        val bitMask = 1 shl i
+                        val newActionsUsed = current.actionsUsed or bitMask
+                        updateCharacter(current.copy(actionsUsed = newActionsUsed))
+                        break
+                    }
+                }
+            }
         }
     }
 

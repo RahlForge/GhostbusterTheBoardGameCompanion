@@ -75,7 +75,7 @@ data class CharacterAbility(
                 CharacterName.EGON_SPENGLER -> listOf(
                     CharacterAbility(
                         Level.LEVEL_1,
-                        "When you roll a 1 on a Combat Roll, gain 1 XP (count only final results).",
+                        "When you roll a 1 on a Proton Roll, gain 1 XP (count only final results).",
                         AbilityType.TRIGGERED_BY_DICE,
                         xpGain = 1
                     ),

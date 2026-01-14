@@ -19,6 +19,7 @@ import com.ghostbusters.companion.ui.components.GhostTrapSection
 import com.ghostbusters.companion.ui.components.ProtonStreamTokens
 import com.ghostbusters.companion.ui.components.ActionSlimeTokens
 import com.ghostbusters.companion.ui.components.XpTracker
+import com.ghostbusters.companion.ui.theme.SlimeGreen
 import com.ghostbusters.companion.ui.viewmodels.CharacterSheetViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -382,6 +383,8 @@ fun CharacterSheetScreen(
                 }
 
                 // Actions / Slime
+                var showDeSlimeDialog by remember { mutableStateOf(false) }
+
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         ActionSlimeTokens(
@@ -393,9 +396,98 @@ fun CharacterSheetScreen(
                             onActionToggle = { viewModel.toggleAction(it) },
                             onManeuverToggle = { viewModel.toggleManeuver() },
                             onAddSlime = { viewModel.addSlime() },
-                            onRemoveSlime = { viewModel.removeSlime() }
+                            onRemoveSlime = { showDeSlimeDialog = true },
+                            canDeSlime = viewModel.canDeSlime()
                         )
                     }
+                }
+
+                // De-Slime dialog
+                if (showDeSlimeDialog) {
+                    val deSlimeTargets = viewModel.getDeSlimeTargets()
+
+                    AlertDialog(
+                        onDismissRequest = { showDeSlimeDialog = false },
+                        title = { Text("De-Slime Ghostbuster") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (deSlimeTargets.isEmpty()) {
+                                    Text("No Ghostbusters available to de-slime.")
+                                } else {
+                                    Text("Select a Ghostbuster to de-slime:")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    deSlimeTargets.forEach { target ->
+                                        val isSelf = target.id == char.id
+                                        Card(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    viewModel.deSlimeCharacter(target.id)
+                                                    showDeSlimeDialog = false
+                                                },
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = Color(target.characterName.getProtonStreamColor().hex).copy(alpha = 0.2f)
+                                            )
+                                        ) {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(12.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column {
+                                                    Text(
+                                                        text = target.characterName.getDisplayName() + if (isSelf) " (Self)" else "",
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                    Text(
+                                                        text = "Slime: ${target.slimeCount}",
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = SlimeGreen
+                                                    )
+                                                    if (isSelf) {
+                                                        Text(
+                                                            text = "Costs ALL actions",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.error,
+                                                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                                        )
+                                                    } else {
+                                                        Text(
+                                                            text = "Costs 1 action",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            if (deSlimeTargets.isEmpty()) {
+                                Button(
+                                    onClick = { showDeSlimeDialog = false }
+                                ) {
+                                    Text("OK")
+                                }
+                            }
+                        },
+                        dismissButton = {
+                            if (deSlimeTargets.isNotEmpty()) {
+                                TextButton(
+                                    onClick = { showDeSlimeDialog = false }
+                                ) {
+                                    Text("Cancel")
+                                }
+                            }
+                        }
+                    )
                 }
 
                 // Ghost Trap

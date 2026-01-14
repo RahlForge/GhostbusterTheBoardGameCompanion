@@ -88,7 +88,8 @@ fun ActionSlimeTokens(
     onRemoveSlime: () -> Unit,
     modifier: Modifier = Modifier,
     maneuverUsed: Boolean = false,
-    onManeuverToggle: () -> Unit = {}
+    onManeuverToggle: () -> Unit = {},
+    canDeSlime: Boolean = true
 ) {
     Column(modifier = modifier) {
         Text(
@@ -214,7 +215,7 @@ fun ActionSlimeTokens(
 
             androidx.compose.material3.Button(
                 onClick = onRemoveSlime,
-                enabled = slimeCount > 0,
+                enabled = canDeSlime,
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary,
                     disabledContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
